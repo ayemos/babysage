@@ -1,0 +1,37 @@
+========
+Babysage
+========
+
+
+.. image:: https://img.shields.io/pypi/v/babysage.svg
+        :target: https://pypi.python.org/pypi/babysage
+
+.. image:: https://img.shields.io/travis/ayemos/babysage.svg
+        :target: https://travis-ci.org/ayemos/babysage
+
+.. image:: https://readthedocs.org/projects/babysage/badge/?version=latest
+        :target: https://babysage.readthedocs.io/en/latest/?badge=latest
+        :alt: Documentation Status
+
+
+
+
+Amazon SageMaker for babies.
+
+
+* Free software: MIT license
+* Documentation: https://babysage.readthedocs.io.
+
+
+Features
+--------
+
+* TODO
+
+Credits
+-------
+
+This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
+
+.. _Cookiecutter: https://github.com/audreyr/cookiecutter
+.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
