@@ -1,0 +1,133 @@
+#! /usr/bin/env python3
+
+import pickle
+import os
+import math
+import random
+import glob
+
+import numpy as np
+import pandas as pd
+
+import imgaug as ia
+from imgaug import augmenters as iaa
+
+from PIL import Image
+
+from keras.applications import inception_v3
+from keras.models import Model
+from keras.layers import Dense, GlobalAveragePooling2D
+from keras.callbacks import TensorBoard, ReduceLROnPlateau, ModelCheckpoint
+from keras.optimizers import Nadam
+from keras.preprocessing import image
+from keras.utils import Sequence, to_categorical
+
+from babysage.resources import get_input_path, get_output_path
+
+
+class MainSequence(Sequence):
+    def __init__(
+            self,
+            image_paths,
+            labels,
+            label_indice,
+            batch_size=32,
+            augmentation=None,
+            image_size=(299, 299)):
+        self.image_paths = image_paths
+        self.labels = labels
+        self.label_indice = label_indice
+        self.batch_size = batch_size
+        self.augmentation = augmentation
+        self.image_size = image_size
+
+    def __len__(self):
+        return math.ceil(len(self.image_paths) / self.batch_size)
+
+    def __getitem__(self, idx):
+        image_batch_tmp = []
+        ys = []
+
+        for i in range(
+                self.batch_size * idx,
+                self.batch_size * (idx + 1)):
+            if i >= len(self.image_paths):
+                break
+
+            image_batch_tmp.append(
+                image.img_to_array(
+                    Image.open(self.image_paths[i]).convert('RGB').resize(self.image_size)))
+
+            ys.append(self.label_indice[self.labels[i]])
+
+        image_batch = np.array(
+            list(inception_v3.preprocess_input(i) for i in image_batch_tmp))
+
+        return (
+            image_batch,
+            to_categorical(np.array(ys), num_classes=len(self.label_indice)))
+
+
+def sometimes(aug):
+    return iaa.Sometimes(0.8, aug)
+
+
+def train():
+    image_dir = get_input_path('images')
+    image_paths = glob.glob(os.path.join(
+        image_dir, '**', '*.jpg'), recursive=True)
+
+    labels = pd.read_csv(get_input_path('labels.csv'))
+
+    label_indice = {n: i for i, n in enumerate(list(target_carnames) + ['OTHERS'])}
+
+    train_seq = MainSequence(
+        image_paths_train,
+        labels_train,
+        label_indice,
+        augmentation=seq,
+        batch_size=64)
+    val_seq = MainSequence(
+        image_paths_val,
+        labels_val,
+        label_indice)
+
+    basemodel = inception_v3.InceptionV3(include_top=False, weights='imagenet')
+
+    x = basemodel.output
+    x = GlobalAveragePooling2D()(x)
+    x = Dense(1024, activation='relu')(x)
+    softmax = Dense(len(train_seq.label_indice), activation='softmax')(x)
+
+    model = Model(inputs=basemodel.input, outputs=softmax)
+
+    for layer in basemodel.layers:
+        layer.trainable = True
+
+    optimizer = Nadam(lr=1e-4)
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+
+    checkpoint_dir = get_output_path('.')
+    if not os.path.isdir(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
+
+    pickle.dump(train_seq.label_indice, open(os.path.join(checkpoint_dir, 'labels.pkl'), 'wb'))
+
+    callbacks = [
+        TensorBoard(log_dir=get_output_path('tensor_board'), write_images=True),
+        ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=2, min_lr=1e-7),
+        ModelCheckpoint(
+            filepath=os.path.join(checkpoint_dir, 'weights_epoch_{epoch:02d}_val_loss_{val_loss:.2f}.hdf5'),
+            monitor='val_acc',
+            save_best_only=False,
+            verbose=1,
+            save_weights_only=False,
+            period=1)]
+
+    model.fit_generator(
+        generator=train_seq, epochs=1, callbacks=callbacks, validation_data=val_seq,
+        workers=8, use_multiprocessing=True, max_queue_size=100)
+
+
+if __name__ == '__main__':
+    train()

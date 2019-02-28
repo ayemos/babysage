@@ -1,0 +1,4 @@
+execution_role_arn: arn:aws:iam::0000000000:role/service-role/AmazonSageMaker-ExecutionRole-hoge
+ecr_repo_name: dummy
+s3_bucket_name: babysage-ap-northeast-1
+experiment_name: hoge
