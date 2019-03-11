@@ -1,18 +1,35 @@
 import os
-import pathlib
 import yaml
 
+from babysage.utils import find_project_root
 
-root_dir = pathlib.Path(os.getcwd())
+project_root = find_project_root()
+
+if project_root:
+    PROJECT_CONFIG = yaml.load(
+        open(
+            os.path.join(
+                find_project_root(),
+                'babysage.yml'), 'r').read())
+else:
+    raise Exception('''
+    Can't find a suitable configuration file (babysage.yml) in this directory or any parent.''')
 
 
-for p in root_dir + root_dir.parents:
-    if 'babysage.yml' in os.listdir(p):
-        CONFIG = yaml.load(open('babysage.yml', 'r').read())
+core_directory = os.path.expanduser(os.path.join('~', '.babysage'))
 
-raise Exception('''
-Can't find a suitable configuration file (babysage.yml) in this directory or any parent.''')
+if not os.path.isdir(core_directory):
+    os.makedirs(core_directory)
+
+if os.path.isfile(os.path.join(core_directory, 'config.yml')):
+    CORE_CONFIG = yaml.load(
+        open(
+            os.path.join(
+                core_directory,
+                'config.yml'), 'r').read())
+else:
+    CORE_CONFIG = {}
 
 
 def get_config(key):
-    return CONFIG[key]
+    return PROJECT_CONFIG.get(key, CORE_CONFIG.get(key, None))

@@ -10,7 +10,7 @@ with open('README.rst') as readme_file:
 
 requirements = [
     'Click>=6.0',
-    'docker~=3.7.0',
+    'docker[tls]~=3.7.0',
     'pyyaml~=3.13']
 
 setup_requirements = []
